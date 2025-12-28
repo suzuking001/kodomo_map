@@ -3,8 +3,23 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#1d4ed8">
+  <meta name="application-name" content="Hamamatsu Temporary Childcare Map">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/icon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/icon-16.png">
+  <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
+  <meta name="msapplication-TileColor" content="#1d4ed8">
+  <meta name="msapplication-config" content="browserconfig.xml">
   <title>浜松市 一時預かり空き状況マップ</title>
-  <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css" />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
@@ -20,6 +35,9 @@
     <div id="date-range-hint" class="menu-hint"></div>
     <label class="menu-label" for="date-picker">日付を選択</label>
     <input id="date-picker" class="menu-input" type="date">
+    <div class="menu-actions">
+      <button id="date-clear" class="menu-button" type="button">日付けリセット</button>
+    </div>
     <label class="menu-label" for="age-select">年齢を選択</label>
     <select id="age-select" class="menu-input"></select>
     <div class="menu-section">
@@ -44,9 +62,18 @@
         <input type="checkbox" id="filter-onsite" checked>
         <span class="menu-tag menu-tag-onsite">事業所内保育事業</span>
       </label>
-    </div>
-    <div class="menu-actions">
-      <button id="date-clear" class="menu-button" type="button">日付けリセット</button>
+      <label class="menu-option">
+        <input type="checkbox" id="filter-company" checked>
+        <span class="menu-tag menu-tag-company">企業主導型保育事業</span>
+      </label>
+      <label class="menu-option">
+        <input type="checkbox" id="filter-unlicensed" checked>
+        <span class="menu-tag menu-tag-unlicensed">認可外保育施設</span>
+      </label>
+      <label class="menu-option">
+        <input type="checkbox" id="filter-unlicensed-limited" checked>
+        <span class="menu-tag menu-tag-unlicensed-limited">認可外（顧客児童限定）</span>
+      </label>
     </div>
     <div id="date-info" class="menu-hint">未選択: 全日表示</div>
     <div id="status-summary" class="status-summary hidden">
@@ -66,7 +93,11 @@
     </div>
   </div>
 
-  <script src="assets/vendor/leaflet/leaflet.js"></script>
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin="">
+  </script>
 
   <script src="assets/app.js"></script>
 </body>
