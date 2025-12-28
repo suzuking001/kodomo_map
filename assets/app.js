@@ -7,6 +7,22 @@ const FACILITY_CSV_URLS = [
 ];
 const AVAIL_CSV_URL =
   "https://static.hamamatsu.odpf.net/opendata/v01/221309_temporary_custody_business_availability/221309_temporary_custody_business_availability.csv";
+const TILE_URL =
+  new URLSearchParams(window.location.search).get("tiles") ||
+  "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png";
+const TILE_ATTRIBUTION =
+  '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a> (ODbL)';
+const DATASET_ATTRIBUTION = [
+  '<span class="attribution-block">データ(CC BY):',
+  `<a href="${AVAIL_CSV_URL}" target="_blank" rel="noopener">一時預かり空き状況</a> /`,
+  `<a href="${FACILITY_CSV_URLS[0]}" target="_blank" rel="noopener">認定こども園等</a> /`,
+  `<a href="${FACILITY_CSV_URLS[1]}" target="_blank" rel="noopener">私立認可保育園</a> /`,
+  `<a href="${FACILITY_CSV_URLS[2]}" target="_blank" rel="noopener">市立認可保育園</a> /`,
+  `<a href="${FACILITY_CSV_URLS[3]}" target="_blank" rel="noopener">小規模保育事業</a> /`,
+  `<a href="${FACILITY_CSV_URLS[4]}" target="_blank" rel="noopener">事業所内保育事業</a>`,
+  "</span>",
+  '<span class="attribution-block">提供: <a href="https://opendata.pref.shizuoka.jp/" target="_blank" rel="noopener">静岡県オープンデータポータル</a> / <a href="https://www.city.hamamatsu.shizuoka.jp/opendata/index.html" target="_blank" rel="noopener">浜松市オープンデータ</a></span>',
+].join(" ");
 
 async function fetchCSV(url, encoding = "shift-jis") {
   const res = await fetch(url);
@@ -277,6 +293,50 @@ function createRangeLabel(map, center, radiusMeters, label, className) {
     });
 }
 
+function getPopupOptions() {
+  const width = window.innerWidth || 360;
+  const height = window.innerHeight || 640;
+  return {
+    maxWidth: Math.min(360, Math.max(240, width - 40)),
+    maxHeight: Math.floor(height * 0.6),
+    autoPan: true,
+    keepInView: true,
+    autoPanPadding: [16, 16],
+    closeButton: true,
+  };
+}
+
+function isMobileView() {
+  return window.matchMedia("(max-width: 768px)").matches;
+}
+
+let menuToggle = null;
+const detailsModal = document.getElementById("details-modal");
+const detailsBody = document.getElementById("details-body");
+const detailsClose = document.getElementById("details-close");
+
+function setDetailsOpen(isOpen, htmlContent = "") {
+  if (!detailsModal || !detailsBody) {
+    return;
+  }
+  if (isOpen) {
+    detailsBody.innerHTML = htmlContent;
+    detailsModal.inert = false;
+    detailsModal.setAttribute("aria-hidden", "false");
+    if (detailsClose) {
+      detailsClose.focus();
+    }
+    detailsModal.classList.toggle("open", true);
+    return;
+  }
+  if (detailsModal.contains(document.activeElement) && menuToggle) {
+    menuToggle.focus();
+  }
+  detailsModal.classList.toggle("open", false);
+  detailsModal.setAttribute("aria-hidden", "true");
+  detailsModal.inert = true;
+}
+
 function addFacilitiesFromDataset(facilityMap, fac, source) {
   const facHeaders = fac.headers;
   const facRows = fac.rows;
@@ -413,12 +473,17 @@ async function main() {
     rows.sort((a, b) => String(a.date).localeCompare(String(b.date)));
   });
 
-const map = L.map("map", { zoomControl: false, attributionControl: false })
+const map = L.map("map", { zoomControl: false, attributionControl: true })
   .setView([34.7108, 137.7266], 12);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap",
-  }).addTo(map);
+L.tileLayer(TILE_URL, {
+  maxZoom: 19,
+  attribution: TILE_ATTRIBUTION,
+}).addTo(map);
+map.attributionControl.setPrefix(
+  '<a href="https://leafletjs.com/" target="_blank" rel="noopener">Leaflet</a> (MIT)'
+);
+map.attributionControl.setPosition("bottomright");
+map.attributionControl.addAttribution(DATASET_ATTRIBUTION);
   L.control.zoom({ position: "bottomright" }).addTo(map);
   const locateControl = L.control({ position: "bottomright" });
   locateControl.onAdd = () => {
@@ -481,32 +546,38 @@ const map = L.map("map", { zoomControl: false, attributionControl: false })
       labelClass = "marker-label marker-label-onsite";
     }
 
-    const marker = L.circleMarker([facility.lat, facility.lon], {
-      radius: 8,
-      color: MARKER_STYLE_DEFAULT.color,
-      fillColor: MARKER_STYLE_DEFAULT.fillColor,
-      fillOpacity: 0.9,
-      weight: 2,
-    })
-      .addTo(map)
-      .bindTooltip(buildTooltipHtml(facility, availabilityRows, statusColumns, "", ""), {
-        permanent: true,
-        direction: "top",
-        offset: [0, -10],
-        className: labelClass,
-      })
-      .bindPopup(buildPopupHtml(facility, availabilityRows, statusColumns, ""), {
-        maxWidth: 520,
-      });
+  const marker = L.circleMarker([facility.lat, facility.lon], {
+    radius: 8,
+    color: MARKER_STYLE_DEFAULT.color,
+    fillColor: MARKER_STYLE_DEFAULT.fillColor,
+    fillOpacity: 0.9,
+    weight: 2,
+  })
+    .addTo(map)
+    .bindTooltip(buildTooltipHtml(facility, availabilityRows, statusColumns, "", ""), {
+      permanent: true,
+      direction: "top",
+      offset: [0, -10],
+      className: labelClass,
+    });
+
+  if (isMobileView()) {
+    marker.on("click", () => {
+      setDetailsOpen(true, buildPopupHtml(facility, availabilityRows, statusColumns, ""));
+    });
+  } else {
+    marker.bindPopup(buildPopupHtml(facility, availabilityRows, statusColumns, ""), getPopupOptions());
+  }
 
     markers.push({ marker, facility, availabilityRows, availabilityByDate });
   });
 
-const menuToggle = document.getElementById("menu-toggle");
+menuToggle = document.getElementById("menu-toggle");
 const menuBackdrop = document.getElementById("menu-backdrop");
 const sideMenu = document.getElementById("side-menu");
 const menuClose = document.getElementById("menu-close");
 const datePicker = document.getElementById("date-picker");
+const dateRangeHint = document.getElementById("date-range-hint");
 const ageSelect = document.getElementById("age-select");
 const filterCertified = document.getElementById("filter-certified");
 const filterPrivate = document.getElementById("filter-private");
@@ -518,9 +589,6 @@ const dateInfo = document.getElementById("date-info");
 const statusAvailable = document.getElementById("status-available");
 const statusFull = document.getElementById("status-full");
 const statusSummary = document.getElementById("status-summary");
-const licenseToggle = document.getElementById("license-toggle");
-const licenseModal = document.getElementById("license-modal");
-const licenseClose = document.getElementById("license-close");
 
 const setMenuOpen = isOpen => {
   sideMenu.classList.toggle("open", isOpen);
@@ -533,15 +601,6 @@ const setMenuOpen = isOpen => {
   menuToggle.setAttribute("aria-expanded", String(isOpen));
 };
 
-const setLicenseOpen = isOpen => {
-  if (!licenseModal || !licenseToggle) {
-    return;
-  }
-  licenseModal.classList.toggle("open", isOpen);
-  licenseModal.setAttribute("aria-hidden", String(!isOpen));
-  licenseToggle.setAttribute("aria-expanded", String(isOpen));
-};
-
 menuToggle.addEventListener("click", () => {
   setMenuOpen(!sideMenu.classList.contains("open"));
 });
@@ -552,23 +611,16 @@ menuBackdrop.addEventListener("click", () => setMenuOpen(false));
 document.addEventListener("keydown", event => {
   if (event.key === "Escape") {
     setMenuOpen(false);
-    setLicenseOpen(false);
+    setDetailsOpen(false);
   }
 });
-if (licenseToggle && licenseModal) {
-  licenseToggle.addEventListener("click", () => {
-    setLicenseOpen(true);
-  });
+if (detailsClose) {
+  detailsClose.addEventListener("click", () => setDetailsOpen(false));
 }
-if (licenseClose) {
-  licenseClose.addEventListener("click", () => {
-    setLicenseOpen(false);
-  });
-}
-if (licenseModal) {
-  licenseModal.addEventListener("click", event => {
-    if (event.target === licenseModal) {
-      setLicenseOpen(false);
+if (detailsModal) {
+  detailsModal.addEventListener("click", event => {
+    if (event.target === detailsModal) {
+      setDetailsOpen(false);
     }
   });
 }
@@ -609,10 +661,16 @@ if (hasDates) {
   datePicker.min = dateList[0];
   datePicker.max = dateList[dateList.length - 1];
   dateInfo.textContent = "未選択: 全日表示";
+  if (dateRangeHint) {
+    dateRangeHint.textContent = `確認可能期間: ${dateList[0]} ～ ${dateList[dateList.length - 1]}`;
+  }
 } else {
   datePicker.disabled = true;
   dateClear.disabled = true;
   dateInfo.textContent = "日付データがありません。";
+  if (dateRangeHint) {
+    dateRangeHint.textContent = "日付データがありません。";
+  }
 }
 
 const typeFilters = {
@@ -764,6 +822,9 @@ const updateMarkersForDate = selectedDate => {
   if (statusSummary) {
     const shouldShowSummary = Boolean(selectedDate && selectedAge);
     statusSummary.classList.toggle("hidden", !shouldShowSummary);
+  }
+  if (detailsModal && detailsModal.classList.contains("open")) {
+    setDetailsOpen(false);
   }
 };
 

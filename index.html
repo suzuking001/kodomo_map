@@ -3,13 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>浜松市 一時預かり空き状況マップ（施設No JOIN版）</title>
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-  />
+  <title>浜松市 一時預かり空き状況マップ</title>
+  <link rel="stylesheet" href="assets/vendor/leaflet/leaflet.css" />
   <link rel="stylesheet" href="assets/styles.css" />
 </head>
 <body>
@@ -19,9 +14,10 @@
   <div id="menu-backdrop" class="menu-backdrop" aria-hidden="true"></div>
   <aside id="side-menu" class="side-menu open" aria-hidden="false">
     <div class="menu-header-row">
-      <div class="menu-header">表示設定</div>
+      <div class="menu-header">浜松市 一時預かり空き状況</div>
       <button id="menu-close" class="menu-close" type="button" aria-label="メニューを閉じる">×</button>
     </div>
+    <div id="date-range-hint" class="menu-hint"></div>
     <label class="menu-label" for="date-picker">日付を選択</label>
     <input id="date-picker" class="menu-input" type="date">
     <label class="menu-label" for="age-select">年齢を選択</label>
@@ -50,47 +46,27 @@
       </label>
     </div>
     <div class="menu-actions">
-      <button id="date-clear" class="menu-button" type="button">表示をリセット</button>
+      <button id="date-clear" class="menu-button" type="button">日付けリセット</button>
     </div>
     <div id="date-info" class="menu-hint">未選択: 全日表示</div>
     <div id="status-summary" class="status-summary hidden">
       <div class="status-row">一時預かり可件数: <span id="status-available">0</span>件</div>
       <div class="status-row">一時預かり不可件数: <span id="status-full">0</span>件</div>
     </div>
-    <div class="menu-footer">
-      <button id="license-toggle" class="menu-button" type="button" aria-expanded="false" aria-controls="license-modal">About / Licenses</button>
-    </div>
+    <div class="menu-hint menu-note">位置情報は端末内で処理され、保存されません。</div>
   </aside>
   <div id="map"></div>
-  <div id="license-modal" class="license-modal" aria-hidden="true" role="dialog" aria-label="About / Licenses">
-    <div class="license-container" role="document">
-      <div class="license-header">
-        <div class="license-title">About / Licenses</div>
-        <button id="license-close" class="menu-button" type="button">閉じる</button>
+  <div id="details-modal" class="details-modal" aria-hidden="true" role="dialog" aria-label="施設詳細">
+    <div class="details-container" role="document">
+      <div class="details-header">
+        <div class="details-title">施設詳細</div>
+        <button id="details-close" class="menu-button" type="button">閉じる</button>
       </div>
-      <div class="license-body">
-        <div>
-          地図: &copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap contributors</a>
-          （<a href="https://opendatacommons.org/licenses/odbl/" target="_blank" rel="noopener">ODbL</a>）
-        </div>
-        <div>
-          ライブラリ: <a href="https://leafletjs.com/" target="_blank" rel="noopener">Leaflet</a> （MIT License）
-        </div>
-        <div>
-          データ: 浜松市オープンデータ（CC BY）
-        </div>
-        <div>
-          データ提供: 静岡県オープンデータポータル / 浜松市
-        </div>
-      </div>
+      <div id="details-body" class="details-body"></div>
     </div>
   </div>
 
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin="">
-  </script>
+  <script src="assets/vendor/leaflet/leaflet.js"></script>
 
   <script src="assets/app.js"></script>
 </body>
