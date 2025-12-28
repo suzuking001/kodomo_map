@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="UTF-8">
@@ -7,7 +7,14 @@
   <meta name="application-name" content="Hamamatsu Temporary Childcare Map">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <link rel="manifest" href="manifest.webmanifest">
+  <script>
+    if (location.protocol !== "file:") {
+      const manifest = document.createElement("link");
+      manifest.rel = "manifest";
+      manifest.href = "manifest.webmanifest";
+      document.head.appendChild(manifest);
+    }
+  </script>
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/icon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/icon-16.png">
   <link rel="apple-touch-icon" sizes="180x180" href="assets/icons/apple-touch-icon.png">
@@ -36,7 +43,7 @@
     <label class="menu-label" for="date-picker">日付を選択</label>
     <input id="date-picker" class="menu-input" type="date">
     <div class="menu-actions">
-      <button id="date-clear" class="menu-button" type="button">日付けリセット</button>
+      <button id="date-clear" class="menu-button" type="button">表示をリセット</button>
     </div>
     <label class="menu-label" for="age-select">年齢を選択</label>
     <select id="age-select" class="menu-input"></select>
@@ -44,7 +51,7 @@
       <div class="menu-subtitle">施設種別</div>
       <label class="menu-option">
         <input type="checkbox" id="filter-certified" checked>
-        <span class="menu-tag">認定こども園等</span>
+        <span class="menu-tag">認定こども園</span>
       </label>
       <label class="menu-option">
         <input type="checkbox" id="filter-private" checked>
@@ -75,12 +82,17 @@
         <span class="menu-tag menu-tag-unlicensed-limited">認可外（顧客児童限定）</span>
       </label>
     </div>
-    <div id="date-info" class="menu-hint">未選択: 全日表示</div>
+    <div id="date-info" class="menu-hint">未選択 / 全日表示</div>
     <div id="status-summary" class="status-summary hidden">
       <div class="status-row">一時預かり可件数: <span id="status-available">0</span>件</div>
       <div class="status-row">一時預かり不可件数: <span id="status-full">0</span>件</div>
     </div>
-    <div class="menu-hint menu-note">位置情報は端末内で処理され、保存されません。</div>
+    <div class="menu-footer">
+      <div class="menu-hint menu-note">位置情報は端末内で処理され、保存されません。</div>
+      <div class="menu-actions">
+        <button id="about-button" class="menu-button" type="button">このアプリについて</button>
+      </div>
+    </div>
   </aside>
   <div id="map"></div>
   <div id="details-modal" class="details-modal" aria-hidden="true" role="dialog" aria-label="施設詳細">
@@ -93,12 +105,37 @@
     </div>
   </div>
 
+  <div id="about-modal" class="details-modal" aria-hidden="true" role="dialog" aria-label="このアプリについて">
+    <div class="details-container" role="document">
+      <div class="details-header">
+        <div class="details-title">このアプリについて</div>
+        <button id="about-close" class="menu-button" type="button">閉じる</button>
+      </div>
+      <div id="about-body" class="about-body">
+        <p>このアプリは、浜松市が公開するオープンデータ<br>
+「一時預かり事業空き状況」「認定こども園一覧」等を利用しています。</p>
+        <p>データ提供：浜松市<br>クリエイティブ・コモンズ・ライセンス 表示2.1 日本</p>
+        <p>本アプリは個人が作成した非公式アプリであり、<br>
+浜松市が提供・運営するものではありません。</p>
+        <p>表示内容は可能な限り最新の情報に基づいていますが、内容の正確性を保証するものではありません。<br>
+最新情報は必ず公式の情報をご確認ください。</p>
+        <p>位置情報は端末内で処理され、保存されません。</p>
+      </div>
+    </div>
+  </div>
   <script
+    charset="UTF-8"
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin="">
   </script>
 
-  <script src="assets/app.js"></script>
+  <script charset="UTF-8" src="assets/js/config.js"></script>
+  <script charset="UTF-8" src="assets/js/csv.js"></script>
+  <script charset="UTF-8" src="assets/js/utils.js"></script>
+  <script charset="UTF-8" src="assets/js/availability.js"></script>
+  <script charset="UTF-8" src="assets/js/map-utils.js"></script>
+  <script charset="UTF-8" src="assets/js/facilities.js"></script>
+  <script charset="UTF-8" src="assets/app.js"></script>
 </body>
 </html>
