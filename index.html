@@ -34,16 +34,22 @@
     &#9776;
   </button>
   <div id="menu-backdrop" class="menu-backdrop" aria-hidden="true"></div>
+  <button id="menu-handle" class="menu-handle hidden" type="button" aria-label="メニューを開く"></button>
   <aside id="side-menu" class="side-menu open" aria-hidden="false">
     <div class="menu-header-row">
       <div class="menu-header">浜松市 一時預かり空き状況</div>
       <button id="menu-close" class="menu-close" type="button" aria-label="メニューを閉じる">×</button>
     </div>
+    <div class="menu-catch">
+      <div><strong>○</strong> 一時預かりの空き状況を地図で確認できます。</div>
+      <div><strong>○</strong> マップ上の施設をクリックすると詳細が表示されます。</div>
+      <div><strong>○</strong> 日付・年齢・施設種別で絞り込むと探しやすいです。</div>
+    </div>
     <div id="date-range-hint" class="menu-hint"></div>
     <label class="menu-label" for="date-picker">日付を選択</label>
     <input id="date-picker" class="menu-input" type="date">
     <div class="menu-actions">
-      <button id="date-clear" class="menu-button" type="button">表示をリセット</button>
+      <button id="date-clear" class="menu-button" type="button">日付けリセット</button>
     </div>
     <label class="menu-label" for="age-select">年齢を選択</label>
     <select id="age-select" class="menu-input"></select>
@@ -84,11 +90,21 @@
     </div>
     <div id="date-info" class="menu-hint">未選択 / 全日表示</div>
     <div id="status-summary" class="status-summary hidden">
-      <div class="status-row">一時預かり可件数: <span id="status-available">0</span>件</div>
-      <div class="status-row">一時預かり不可件数: <span id="status-full">0</span>件</div>
+      <div class="status-row">
+        <span class="status-legend status-legend-available" aria-hidden="true"></span>
+        一時預かり可件数: <span id="status-available">0</span>件
+      </div>
+      <div class="status-row">
+        <span class="status-legend status-legend-full" aria-hidden="true"></span>
+        一時預かり不可件数: <span id="status-full">0</span>件
+      </div>
     </div>
     <div class="menu-footer">
-      <div class="menu-hint menu-note">位置情報は端末内で処理され、保存されません。</div>
+      <div class="menu-license">
+        <div>Leaflet (MIT) | &copy; OpenStreetMap contributors (ODbL)</div>
+        <div>データ(CC BY): 一時預かり空き状況 / 認定こども園 / 私立認可保育園 / 市立認可保育園 / 小規模保育事業 / 事業所内保育事業 / 企業主導型保育事業 / 認可外保育施設 / 認可外（顧客児童限定）</div>
+        <div>提供: <a href="https://opendata.pref.shizuoka.jp/" target="_blank" rel="noopener">静岡県オープンデータポータル</a> / <a href="https://www.city.hamamatsu.shizuoka.jp/opendata/index.html" target="_blank" rel="noopener">浜松市オープンデータ</a></div>
+      </div>
       <div class="menu-actions">
         <button id="about-button" class="menu-button" type="button">このアプリについて</button>
       </div>
@@ -119,6 +135,9 @@
 浜松市が提供・運営するものではありません。</p>
         <p>表示内容は可能な限り最新の情報に基づいていますが、内容の正確性を保証するものではありません。<br>
 最新情報は必ず公式の情報をご確認ください。</p>
+        <p>公式情報は下記から入手するようにしてください。<br>
+          <a href="https://www.hamamatsu-pippi.net/shiritai/yoho/" target="_blank" rel="noopener">https://www.hamamatsu-pippi.net/shiritai/yoho/</a>
+        </p>
         <p>位置情報は端末内で処理され、保存されません。</p>
       </div>
     </div>
@@ -139,3 +158,6 @@
   <script charset="UTF-8" src="assets/app.js"></script>
 </body>
 </html>
+
+
+

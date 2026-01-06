@@ -37,9 +37,9 @@
     '<span class="attribution-block">提供: <a href="https://opendata.pref.shizuoka.jp/" target="_blank" rel="noopener">静岡県オープンデータポータル</a> / <a href="https://www.city.hamamatsu.shizuoka.jp/opendata/index.html" target="_blank" rel="noopener">浜松市オープンデータ</a></span>',
   ].join(" ");
 
-  const MARKER_STYLE_DEFAULT = { color: "#2563eb", fillColor: "#60a5fa" };
-  const MARKER_STYLE_FULL = { color: "#6b7280", fillColor: "#cbd5e1" };
-  const MARKER_STYLE_AVAILABLE = { color: "#2f855a", fillColor: "#68d391" };
+  const MARKER_STYLE_DEFAULT = { color: "#9ca3af", fillColor: "#ffffff" };
+  const MARKER_STYLE_FULL = { color: "#dc2626", fillColor: "#f87171" };
+  const MARKER_STYLE_AVAILABLE = { color: "#16a34a", fillColor: "#4ade80" };
 
   window.App.config = {
     FACILITY_CSV_URLS,

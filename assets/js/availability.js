@@ -11,6 +11,7 @@ function buildAvailabilityTable(rows, statusColumns) {
     "<th>日付</th>",
     "<th>曜日</th>",
     ...statusColumns.map(col => `<th>${escapeHtml(col.header)}</th>`),
+    "<th>集計日</th>",
   ].join("");
 
   const bodyRows = rows
@@ -18,11 +19,13 @@ function buildAvailabilityTable(rows, statusColumns) {
       const statusCells = row.statuses
         .map(value => `<td>${escapeHtml(value || "-")}</td>`)
         .join("");
+      const aggregationCell = `<td>${escapeHtml(row.aggregationDate || "-")}</td>`;
       return `
       <tr>
         <td>${escapeHtml(row.date)}</td>
         <td>${escapeHtml(row.weekday)}</td>
         ${statusCells}
+        ${aggregationCell}
       </tr>
     `;
     })
@@ -66,7 +69,7 @@ function buildTooltipHtml(facility, rows, statusColumns, selectedDate, selectedA
   if (!rows.length) {
     return `
       <div class="label-title">${name}</div>
-      <div class="label-status label-empty">該当日なし</div>
+      <div class="label-status label-empty">情報なし</div>
     `;
   }
   const summaryHtml = buildStatusSummaryHtml(rows[0], statusColumns, selectedAge);
@@ -80,6 +83,25 @@ function buildPopupHtml(facility, availabilityRows, statusColumns, selectedDate)
   const mapsUrl = `https://www.google.com/maps?q=${encodeURIComponent(
     `${facility.lat},${facility.lon}`
   )}`;
+  const searchQuery = facility.name
+    ? `浜松市 ${facility.name}`
+    : "浜松市";
+  const searchUrl = `https://www.google.com/search?q=${encodeURIComponent(searchQuery)}`;
+  const phoneRaw = String(facility.phone || "").trim();
+  const phoneDigits = phoneRaw.replace(/[^\d+]/g, "");
+  const phoneLabel = phoneRaw ? `電話をかける: ${escapeHtml(phoneRaw)}` : "電話をかける";
+  const phoneLink = phoneDigits
+    ? `<a class="popup-link" href="tel:${escapeHtml(phoneDigits)}">${phoneLabel}</a>`
+    : "";
+  const rawWebsite = String(facility.website || "").trim();
+  const websiteUrl = rawWebsite
+    ? (rawWebsite.startsWith("http://") || rawWebsite.startsWith("https://")
+      ? rawWebsite
+      : `https://${rawWebsite}`)
+    : "";
+  const websiteLink = websiteUrl
+    ? `<a class="popup-link" href="${escapeHtml(websiteUrl)}" target="_blank" rel="noopener">公式サイトを開く</a>`
+    : "";
   const metaLines = [
     facility.address && `所在地: ${escapeHtml(facility.address)}`,
     facility.phone && `電話番号: ${escapeHtml(facility.phone)}`,
@@ -117,6 +139,9 @@ function buildPopupHtml(facility, availabilityRows, statusColumns, selectedDate)
           ${metaLines}
           <div class="section popup-actions">
             <a class="popup-link" href="${mapsUrl}" target="_blank" rel="noopener">Google Mapで開く</a>
+            <a class="popup-link" href="${searchUrl}" target="_blank" rel="noopener">Googleで検索</a>
+            ${phoneLink}
+            ${websiteLink}
           </div>
           <div class="section">
             ${buildAvailabilityTable(availabilityRows, statusColumns)}
@@ -132,3 +157,5 @@ function buildPopupHtml(facility, availabilityRows, statusColumns, selectedDate)
     buildPopupHtml,
   };
 })();
+
+

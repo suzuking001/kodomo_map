@@ -1,4 +1,4 @@
-html, body { height: 100%; margin: 0; }
+﻿html, body { height: 100%; margin: 0; }
 #map { height: 100vh; width: 100%; }
 
 .popup {
@@ -40,7 +40,7 @@ html, body { height: 100%; margin: 0; }
   border-radius: 6px;
   background: #f1f5f9;
   border: 1px solid #cbd5f5;
-  color: #1d4ed8;
+  color: #2563eb;
   font-size: 12px;
   text-decoration: none;
 }
@@ -66,9 +66,12 @@ html, body { height: 100%; margin: 0; }
   padding: 2px 6px;
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
   white-space: nowrap;
+  transition: opacity 0.2s ease;
 }
 .marker-label.leaflet-tooltip {
   border: 1px solid #c8c8c8;
+  pointer-events: auto;
+  cursor: pointer;
 }
 .marker-label .label-title {
   display: block;
@@ -171,6 +174,25 @@ html, body { height: 100%; margin: 0; }
   transition: opacity 0.2s ease;
   z-index: 1000;
 }
+.menu-handle {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 6px;
+  border-radius: 999px;
+  border: none;
+  background: rgba(148, 163, 184, 0.8);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+  z-index: 1003;
+  display: none;
+  cursor: pointer;
+}
+.menu-handle.hidden {
+  opacity: 0;
+  pointer-events: none;
+}
 .menu-backdrop.open {
   opacity: 1;
   pointer-events: none;
@@ -192,6 +214,9 @@ html, body { height: 100%; margin: 0; }
   display: flex;
   flex-direction: column;
   gap: 10px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 .side-menu.open {
   transform: translateX(0);
@@ -204,6 +229,21 @@ html, body { height: 100%; margin: 0; }
 }
 .menu-header {
   font-size: 16px;
+  font-weight: 700;
+}
+.menu-catch {
+  margin-top: 4px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.85);
+  border: 1px solid rgba(148, 163, 184, 0.45);
+  font-size: 12px;
+  color: #1f2937;
+  line-height: 1.5;
+  display: grid;
+  gap: 6px;
+}
+.menu-catch strong {
   font-weight: 700;
 }
 .menu-close {
@@ -282,6 +322,23 @@ html, body { height: 100%; margin: 0; }
   gap: 6px;
   align-items: baseline;
 }
+.status-legend {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+.status-legend-available {
+  background: #4ade80;
+  border-color: #16a34a;
+}
+.status-legend-full {
+  background: #f87171;
+  border-color: #dc2626;
+}
 .menu-note {
   margin-top: auto;
   font-size: 12px;
@@ -293,15 +350,28 @@ html, body { height: 100%; margin: 0; }
   flex-direction: column;
   gap: 10px;
 }
+.menu-license {
+  font-size: 11px;
+  color: #475569;
+  line-height: 1.4;
+  display: grid;
+  gap: 4px;
+}
+.menu-license a {
+  color: #2563eb;
+  text-decoration: none;
+}
+.menu-license a:hover {
+  text-decoration: underline;
+}
 .menu-footer .menu-note {
   margin-top: 0;
 }
 .leaflet-control-attribution {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(6px);
-  border-radius: 8px;
-  box-shadow: 0 8px 18px rgba(15, 23, 42, 0.12);
-  padding: 6px 8px;
+  background: transparent;
+  box-shadow: none;
+  backdrop-filter: none;
+  padding: 4px 6px;
   font-size: 11px;
   line-height: 1.4;
   max-width: min(520px, 70vw);
@@ -348,14 +418,29 @@ html, body { height: 100%; margin: 0; }
 }
 @media (max-width: 768px) {
   .side-menu {
-    width: min(92vw, 360px);
-    padding: 14px;
+    width: 100vw;
+    max-width: 100vw;
+    height: 50vh;
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px;
+    border-radius: 16px 16px 0 0;
     gap: 8px;
+    transform: translateY(calc(100% - 24px));
+  }
+  .side-menu.open {
+    transform: translateY(0);
+  }
+  .menu-handle {
+    display: block;
   }
   .menu-toggle {
     width: 44px;
     height: 44px;
     font-size: 22px;
+    display: none;
   }
   .menu-close {
     width: 34px;
@@ -474,3 +559,11 @@ html, body { height: 100%; margin: 0; }
   background: #e5e7eb;
   border-color: #d1d5db;
 }
+
+
+
+
+
+
+
+

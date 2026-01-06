@@ -87,6 +87,7 @@ async function main() {
   const avFacNoIndex = indexOrThrow(avHeaders, "施設No.");
   const avDateIndex = indexOrThrow(avHeaders, "日付");
   const avWeekdayIndex = avHeaders.indexOf("曜日");
+  const avAggregationIndex = avHeaders.indexOf("集計日");
   const statusColumns = findHeadersByPrefix(avHeaders, "一時保育(")
     .map(item => {
       const match = item.header.match(/\((\d+)/);
@@ -128,6 +129,9 @@ async function main() {
     const facNoKey = normalizeNo(facNoRaw);
     if (!facNoKey) return;
 
+    const aggregationDate =
+      avAggregationIndex >= 0 ? row[avAggregationIndex] || "" : "";
+
     if (!availabilityMap[facNoKey]) {
       availabilityMap[facNoKey] = [];
     }
@@ -136,6 +140,7 @@ async function main() {
       date: row[avDateIndex] || "",
       weekday: avWeekdayIndex >= 0 ? row[avWeekdayIndex] || "" : "",
       statuses: statusColumns.map(col => row[col.index] || ""),
+      aggregationDate,
     });
   });
 
@@ -152,11 +157,11 @@ async function main() {
   map.attributionControl.setPrefix(
     '<a href="https://leafletjs.com/" target="_blank" rel="noopener">Leaflet</a> (MIT)'
   );
-  map.attributionControl.setPosition("bottomright");
-  map.attributionControl.addAttribution(DATASET_ATTRIBUTION);
-  L.control.zoom({ position: "bottomright" }).addTo(map);
+  map.attributionControl.setPosition("topright");
+  const controlPosition = isMobileView() ? "topleft" : "bottomright";
+  L.control.zoom({ position: controlPosition }).addTo(map);
 
-  const locateControl = L.control({ position: "bottomright" });
+  const locateControl = L.control({ position: controlPosition });
   locateControl.onAdd = () => {
     const container = L.DomUtil.create("div", "leaflet-control leaflet-control-locate");
     const button = L.DomUtil.create("button", "locate-button", container);
@@ -185,6 +190,28 @@ async function main() {
   let hit = 0;
   let miss = 0;
   const markers = [];
+  const updateLabelOpacity = () => {
+    const zoom = map.getZoom();
+    const minZoom = 12;
+    const maxZoom = 14;
+    let opacity = 1;
+    if (zoom <= minZoom) {
+      opacity = 0;
+    } else if (zoom >= maxZoom) {
+      opacity = 1;
+    } else {
+      opacity = (zoom - minZoom) / (maxZoom - minZoom);
+    }
+    markers.forEach(item => {
+      const tooltip = item.marker.getTooltip();
+      const el = tooltip ? tooltip.getElement() : null;
+      if (!el) {
+        return;
+      }
+      el.style.opacity = String(opacity);
+      el.style.pointerEvents = opacity < 0.2 ? "none" : "auto";
+    });
+  };
 
   Object.values(facilityMap).forEach(facility => {
     const availabilityRows = availabilityMap[facility.no] || [];
@@ -222,6 +249,16 @@ async function main() {
       labelClass = "marker-label marker-label-unlicensed-limited";
     }
 
+    const openDetails = () => {
+      if (isMobileView()) {
+        setDetailsOpen(true, buildPopupHtml(facility, availabilityRows, statusColumns, ""));
+        return;
+      }
+      if (marker.getPopup()) {
+        marker.openPopup();
+      }
+    };
+
     const marker = L.circleMarker([facility.lat, facility.lon], {
       radius: 8,
       color: MARKER_STYLE_DEFAULT.color,
@@ -237,25 +274,42 @@ async function main() {
           direction: "top",
           offset: [0, -10],
           className: labelClass,
+          interactive: true,
         }
       );
 
     if (isMobileView()) {
-      marker.on("click", () => {
-        setDetailsOpen(true, buildPopupHtml(facility, availabilityRows, statusColumns, ""));
-      });
+      marker.on("click", openDetails);
     } else {
       marker.bindPopup(
         buildPopupHtml(facility, availabilityRows, statusColumns, ""),
         getPopupOptions()
       );
     }
+    marker.on("tooltipopen", () => {
+      const tooltip = marker.getTooltip();
+      const tooltipEl = tooltip ? tooltip.getElement() : null;
+      if (!tooltipEl || tooltipEl.dataset.tapBound) {
+        return;
+      }
+      tooltipEl.dataset.tapBound = "true";
+      tooltipEl.style.pointerEvents = "auto";
+      tooltipEl.style.cursor = "pointer";
+      tooltipEl.addEventListener("click", event => {
+        event.preventDefault();
+        event.stopPropagation();
+        openDetails();
+      });
+    });
 
     markers.push({ marker, facility, availabilityRows, availabilityByDate });
   });
+  map.on("zoomend", updateLabelOpacity);
+  map.whenReady(updateLabelOpacity);
 
   menuToggle = document.getElementById("menu-toggle");
   const menuBackdrop = document.getElementById("menu-backdrop");
+  const menuHandle = document.getElementById("menu-handle");
   const sideMenu = document.getElementById("side-menu");
   const menuClose = document.getElementById("menu-close");
   const datePicker = document.getElementById("date-picker");
@@ -276,26 +330,56 @@ async function main() {
   const statusSummary = document.getElementById("status-summary");
 
   const setMenuOpen = isOpen => {
+    const activeElement = document.activeElement;
+    if (!isOpen && sideMenu.contains(activeElement)) {
+      if (menuHandle && isMobileView()) {
+        menuHandle.classList.remove("hidden");
+        menuHandle.focus();
+      } else if (menuToggle) {
+        menuToggle.focus();
+      } else if (activeElement && activeElement.blur) {
+        activeElement.blur();
+      }
+    }
+
     sideMenu.classList.toggle("open", isOpen);
     menuBackdrop.classList.toggle("open", isOpen);
-    if (!isOpen && sideMenu.contains(document.activeElement)) {
-      menuToggle.focus();
-    }
     sideMenu.setAttribute("aria-hidden", String(!isOpen));
     sideMenu.inert = !isOpen;
-    menuToggle.setAttribute("aria-expanded", String(isOpen));
+    if (menuToggle) {
+      menuToggle.setAttribute("aria-expanded", String(isOpen));
+    }
+    if (menuHandle) {
+      menuHandle.classList.toggle("hidden", isOpen);
+    }
   };
 
   menuToggle.addEventListener("click", () => {
-    setMenuOpen(!sideMenu.classList.contains("open"));
+    if (!sideMenu.classList.contains("open")) {
+      setMenuOpen(true);
+    }
   });
+  if (menuHandle) {
+    menuHandle.addEventListener("click", () => setMenuOpen(true));
+    let handleStartY = null;
+    menuHandle.addEventListener("touchstart", event => {
+      if (!isMobileView()) return;
+      handleStartY = event.touches[0].clientY;
+    }, { passive: true });
+    menuHandle.addEventListener("touchend", event => {
+      if (!isMobileView() || handleStartY === null) return;
+      const delta = handleStartY - event.changedTouches[0].clientY;
+      if (delta > 30) {
+        setMenuOpen(true);
+      }
+      handleStartY = null;
+    });
+  }
   if (menuClose) {
     menuClose.addEventListener("click", () => setMenuOpen(false));
   }
-  menuBackdrop.addEventListener("click", () => setMenuOpen(false));
   document.addEventListener("keydown", event => {
     if (event.key === "Escape") {
-      setMenuOpen(false);
       setDetailsOpen(false);
       setAboutOpen(false);
     }
@@ -415,16 +499,16 @@ async function main() {
 
     userLocationMarker = L.circleMarker(event.latlng, {
       radius: 7,
-      color: "#b91c1c",
-      fillColor: "#fca5a5",
+      color: "#2563eb",
+      fillColor: "#60a5fa",
       fillOpacity: 0.9,
       weight: 2,
     }).addTo(map).bindPopup("現在地");
 
     userLocationCircle = L.circle(event.latlng, {
       radius: event.accuracy,
-      color: "#fca5a5",
-      fillColor: "#fecaca",
+      color: "#60a5fa",
+      fillColor: "#bfdbfe",
       fillOpacity: 0.2,
       weight: 1,
       interactive: false,
@@ -432,8 +516,8 @@ async function main() {
 
     userLocationCircle2km = L.circle(event.latlng, {
       radius: 2000,
-      color: "#f87171",
-      fillColor: "#fecaca",
+      color: "#2563eb",
+      fillColor: "#bfdbfe",
       fillOpacity: 0.12,
       weight: 2,
       dashArray: "4 6",
@@ -442,8 +526,8 @@ async function main() {
 
     userLocationCircle5km = L.circle(event.latlng, {
       radius: 5000,
-      color: "#ef4444",
-      fillColor: "#fee2e2",
+      color: "#1d4ed8",
+      fillColor: "#dbeafe",
       fillOpacity: 0.08,
       weight: 2,
       dashArray: "4 6",
@@ -482,7 +566,7 @@ async function main() {
         ? (item.availabilityByDate[selectedDate] || [])
         : item.availabilityRows;
       const typeEnabled = isTypeEnabled(item.facility.source);
-      const shouldShow = typeEnabled && (!selectedDate || filteredRows.length > 0);
+      const shouldShow = typeEnabled;
 
       if (shouldShow) {
         if (!map.hasLayer(item.marker)) {
@@ -555,3 +639,15 @@ async function main() {
 
   main().catch(console.error);
 })();
+
+
+
+
+
+
+
+
+
+
+
+

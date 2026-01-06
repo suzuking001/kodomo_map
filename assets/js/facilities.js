@@ -14,6 +14,17 @@ function addFacilitiesFromDataset(facilityMap, fac, source) {
   const facAddr2Index = facHeaders.indexOf("所在地2");
   const facPhoneIndex = facHeaders.indexOf("電話番号");
   const facOperatorIndex = facHeaders.indexOf("設置主体");
+  const facUrlIndex = facHeaders.findIndex(header => {
+    const normalized = header.toUpperCase();
+    return (
+      normalized.includes("URL") ||
+      normalized.includes("WEB") ||
+      header.includes("ＵＲＬ") ||
+      header.includes("ホームページ") ||
+      header.includes("公式サイト") ||
+      header.includes("ウェブ")
+    );
+  });
   const facCapacityIndex = facHeaders.indexOf("定員");
   const facOpenIndex = facHeaders.indexOf("開所時間");
   const facCloseIndex = facHeaders.indexOf("閉所時間");
@@ -54,6 +65,7 @@ function addFacilitiesFromDataset(facilityMap, fac, source) {
       phone: facPhoneIndex >= 0 ? row[facPhoneIndex] : "",
       operator: facOperatorIndex >= 0 ? row[facOperatorIndex] : "",
       capacity: facCapacityIndex >= 0 ? row[facCapacityIndex] : "",
+      website: facUrlIndex >= 0 ? row[facUrlIndex] : "",
       openTime: facOpenIndex >= 0 ? row[facOpenIndex] : "",
       closeTime: facCloseIndex >= 0 ? row[facCloseIndex] : "",
       standardStart: facStdStartIndex >= 0 ? row[facStdStartIndex] : "",
