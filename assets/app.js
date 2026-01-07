@@ -359,22 +359,6 @@ async function main() {
       setMenuOpen(true);
     }
   });
-  if (menuHandle) {
-    menuHandle.addEventListener("click", () => setMenuOpen(true));
-    let handleStartY = null;
-    menuHandle.addEventListener("touchstart", event => {
-      if (!isMobileView()) return;
-      handleStartY = event.touches[0].clientY;
-    }, { passive: true });
-    menuHandle.addEventListener("touchend", event => {
-      if (!isMobileView() || handleStartY === null) return;
-      const delta = handleStartY - event.changedTouches[0].clientY;
-      if (delta > 30) {
-        setMenuOpen(true);
-      }
-      handleStartY = null;
-    });
-  }
   if (menuClose) {
     menuClose.addEventListener("click", () => setMenuOpen(false));
   }
@@ -639,6 +623,8 @@ async function main() {
 
   main().catch(console.error);
 })();
+
+
 
 
 
