@@ -316,7 +316,11 @@ async function main() {
     rows.sort((a, b) => String(a.date).localeCompare(String(b.date)));
   });
 
-  const map = L.map("map", { zoomControl: false, attributionControl: true })
+  const map = L.map("map", {
+    zoomControl: false,
+    attributionControl: true,
+    preferCanvas: true,
+  })
     .setView([34.7108, 137.7266], 12);
   L.tileLayer(TILE_URL, {
     maxZoom: 19,
@@ -355,20 +359,28 @@ async function main() {
   };
   locateControl.addTo(map);
 
+  const markerRenderer = L.canvas({ padding: 0.5 });
+  const LABEL_MIN_ZOOM = 12;
+  const LABEL_FADE_MAX_ZOOM = 14;
+  const labelState = { enabled: false };
+  let currentSelectedDate = "";
+  let currentSelectedAge = "";
+
   let hit = 0;
   let miss = 0;
   const markers = [];
   const updateLabelOpacity = () => {
+    if (!labelState.enabled) {
+      return;
+    }
     const zoom = map.getZoom();
-    const minZoom = 12;
-    const maxZoom = 14;
     let opacity = 1;
-    if (zoom <= minZoom) {
+    if (zoom <= LABEL_MIN_ZOOM) {
       opacity = 0;
-    } else if (zoom >= maxZoom) {
+    } else if (zoom >= LABEL_FADE_MAX_ZOOM) {
       opacity = 1;
     } else {
-      opacity = (zoom - minZoom) / (maxZoom - minZoom);
+      opacity = (zoom - LABEL_MIN_ZOOM) / (LABEL_FADE_MAX_ZOOM - LABEL_MIN_ZOOM);
     }
     markers.forEach(item => {
       const tooltip = item.marker.getTooltip();
@@ -427,24 +439,30 @@ async function main() {
       }
     };
 
+    const tooltipOptions = {
+      permanent: true,
+      direction: "top",
+      offset: [0, -10],
+      className: labelClass,
+      interactive: true,
+    };
+    const tooltipHtml = buildTooltipHtml(
+      facility,
+      availabilityRows,
+      statusColumns,
+      "",
+      ""
+    );
+
     const marker = L.circleMarker([facility.lat, facility.lon], {
       radius: 8,
       color: MARKER_STYLE_DEFAULT.color,
       fillColor: MARKER_STYLE_DEFAULT.fillColor,
       fillOpacity: 0.9,
       weight: 2,
+      renderer: markerRenderer,
     })
-      .addTo(map)
-      .bindTooltip(
-        buildTooltipHtml(facility, availabilityRows, statusColumns, "", ""),
-        {
-          permanent: true,
-          direction: "top",
-          offset: [0, -10],
-          className: labelClass,
-          interactive: true,
-        }
-      );
+      .addTo(map);
 
     if (isMobileView()) {
       marker.on("click", openDetails);
@@ -470,10 +488,65 @@ async function main() {
       });
     });
 
-    markers.push({ marker, facility, availabilityRows, availabilityByDate });
+    markers.push({
+      marker,
+      facility,
+      availabilityRows,
+      availabilityByDate,
+      tooltipOptions,
+      tooltipHtml,
+    });
   });
-  map.on("zoomend", updateLabelOpacity);
-  map.whenReady(updateLabelOpacity);
+
+  const refreshTooltipContent = (selectedDate, selectedAge) => {
+    markers.forEach(item => {
+      if (!map.hasLayer(item.marker)) {
+        return;
+      }
+      const filteredRows = selectedDate
+        ? (item.availabilityByDate[selectedDate] || [])
+        : item.availabilityRows;
+      item.tooltipHtml = buildTooltipHtml(
+        item.facility,
+        filteredRows,
+        statusColumns,
+        selectedDate,
+        selectedAge
+      );
+      if (item.marker.getTooltip()) {
+        item.marker.setTooltipContent(item.tooltipHtml);
+      }
+    });
+  };
+
+  const updateLabelState = () => {
+    const zoom = map.getZoom();
+    const shouldEnable = zoom > LABEL_MIN_ZOOM;
+    if (shouldEnable === labelState.enabled) {
+      updateLabelOpacity();
+      return;
+    }
+    labelState.enabled = shouldEnable;
+    markers.forEach(item => {
+      if (shouldEnable) {
+        if (!map.hasLayer(item.marker)) {
+          return;
+        }
+        if (!item.marker.getTooltip()) {
+          item.marker.bindTooltip(item.tooltipHtml || "", item.tooltipOptions);
+        }
+      } else if (item.marker.getTooltip()) {
+        item.marker.unbindTooltip();
+      }
+    });
+    if (labelState.enabled) {
+      refreshTooltipContent(currentSelectedDate, currentSelectedAge);
+      updateLabelOpacity();
+    }
+  };
+
+  map.on("zoomend", updateLabelState);
+  map.whenReady(updateLabelState);
 
   menuToggle = document.getElementById("menu-toggle");
   const menuBackdrop = document.getElementById("menu-backdrop");
@@ -709,6 +782,8 @@ async function main() {
 
   const updateMarkersForDate = selectedDate => {
     const selectedAge = ageSelect.value;
+    currentSelectedDate = selectedDate;
+    currentSelectedAge = selectedAge;
     const ageLabel = selectedAge ? `${selectedAge}歳` : "全年齢";
     let visible = 0;
     let availableCount = 0;
@@ -729,9 +804,19 @@ async function main() {
           : "";
         const style = resolveMarkerStyle(statusValue);
         item.marker.setStyle(style);
-        item.marker.setTooltipContent(
-          buildTooltipHtml(item.facility, filteredRows, statusColumns, selectedDate, selectedAge)
-        );
+        if (labelState.enabled) {
+          if (!item.marker.getTooltip()) {
+            item.marker.bindTooltip(item.tooltipHtml || "", item.tooltipOptions);
+          }
+          item.tooltipHtml = buildTooltipHtml(
+            item.facility,
+            filteredRows,
+            statusColumns,
+            selectedDate,
+            selectedAge
+          );
+          item.marker.setTooltipContent(item.tooltipHtml);
+        }
         if (style === MARKER_STYLE_AVAILABLE) {
           availableCount++;
         } else if (style === MARKER_STYLE_FULL) {
@@ -764,6 +849,9 @@ async function main() {
     }
     if (detailsModal && detailsModal.classList.contains("open")) {
       setDetailsOpen(false);
+    }
+    if (labelState.enabled) {
+      updateLabelOpacity();
     }
   };
 
