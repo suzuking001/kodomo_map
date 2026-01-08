@@ -365,6 +365,23 @@ async function main() {
   const labelState = { enabled: false };
   let currentSelectedDate = "";
   let currentSelectedAge = "";
+  const makeTooltipCacheKey = (selectedDate, selectedAge) =>
+    `${selectedDate || ""}|${selectedAge || ""}`;
+  const getTooltipHtml = (item, selectedDate, selectedAge, filteredRows) => {
+    const key = makeTooltipCacheKey(selectedDate, selectedAge);
+    if (item.tooltipCache[key]) {
+      return item.tooltipCache[key];
+    }
+    const html = buildTooltipHtml(
+      item.facility,
+      filteredRows,
+      statusColumns,
+      selectedDate,
+      selectedAge
+    );
+    item.tooltipCache[key] = html;
+    return html;
+  };
 
   let hit = 0;
   let miss = 0;
@@ -446,6 +463,8 @@ async function main() {
       className: labelClass,
       interactive: true,
     };
+    const tooltipCache = Object.create(null);
+    const initialTooltipKey = makeTooltipCacheKey("", "");
     const tooltipHtml = buildTooltipHtml(
       facility,
       availabilityRows,
@@ -453,6 +472,7 @@ async function main() {
       "",
       ""
     );
+    tooltipCache[initialTooltipKey] = tooltipHtml;
 
     const marker = L.circleMarker([facility.lat, facility.lon], {
       radius: 8,
@@ -495,6 +515,7 @@ async function main() {
       availabilityByDate,
       tooltipOptions,
       tooltipHtml,
+      tooltipCache,
     });
   });
 
@@ -506,13 +527,7 @@ async function main() {
       const filteredRows = selectedDate
         ? (item.availabilityByDate[selectedDate] || [])
         : item.availabilityRows;
-      item.tooltipHtml = buildTooltipHtml(
-        item.facility,
-        filteredRows,
-        statusColumns,
-        selectedDate,
-        selectedAge
-      );
+      item.tooltipHtml = getTooltipHtml(item, selectedDate, selectedAge, filteredRows);
       if (item.marker.getTooltip()) {
         item.marker.setTooltipContent(item.tooltipHtml);
       }
@@ -808,13 +823,7 @@ async function main() {
           if (!item.marker.getTooltip()) {
             item.marker.bindTooltip(item.tooltipHtml || "", item.tooltipOptions);
           }
-          item.tooltipHtml = buildTooltipHtml(
-            item.facility,
-            filteredRows,
-            statusColumns,
-            selectedDate,
-            selectedAge
-          );
+          item.tooltipHtml = getTooltipHtml(item, selectedDate, selectedAge, filteredRows);
           item.marker.setTooltipContent(item.tooltipHtml);
         }
         if (style === MARKER_STYLE_AVAILABLE) {
