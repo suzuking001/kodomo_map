@@ -29,6 +29,167 @@ const aboutModal = document.getElementById("about-modal");
 const aboutClose = document.getElementById("about-close");
 const aboutButton = document.getElementById("about-button");
 
+const WORKER_SOURCE = String.raw`
+(() => {
+  function parseCSV(text) {
+    const rows = [];
+    let row = [];
+    let field = "";
+    let inQuotes = false;
+
+    for (let i = 0; i < text.length; i++) {
+      const char = text[i];
+      if (inQuotes) {
+        if (char === "\"") {
+          if (text[i + 1] === "\"") {
+            field += "\"";
+            i++;
+          } else {
+            inQuotes = false;
+          }
+        } else {
+          field += char;
+        }
+        continue;
+      }
+
+      if (char === "\"") {
+        inQuotes = true;
+      } else if (char === ",") {
+        row.push(field);
+        field = "";
+      } else if (char === "\n") {
+        row.push(field);
+        rows.push(row);
+        row = [];
+        field = "";
+      } else if (char !== "\r") {
+        field += char;
+      }
+    }
+
+    if (field.length || row.length) {
+      row.push(field);
+      rows.push(row);
+    }
+
+    const headers = rows.shift() || [];
+    const cleanedRows = rows.filter(r => r.some(cell => String(cell).trim() !== ""));
+    return { headers, rows: cleanedRows };
+  }
+
+  async function fetchCSV(url, encoding) {
+    const res = await fetch(url, { cache: "no-store" });
+    if (!res.ok) {
+      throw new Error("CSV fetch failed: " + res.status + " " + res.statusText);
+    }
+    const buffer = await res.arrayBuffer();
+    const decoder = new TextDecoder(encoding || "shift-jis");
+    return decoder.decode(buffer);
+  }
+
+  self.onmessage = async event => {
+    const data = event.data || {};
+    const id = data.id;
+    const facilityUrls = data.facilityUrls;
+    const availabilityUrl = data.availabilityUrl;
+    const encoding = data.encoding;
+    if (!id || !facilityUrls || !availabilityUrl) {
+      return;
+    }
+    try {
+      const facilityTexts = await Promise.all(
+        facilityUrls.map(url => fetchCSV(url, encoding))
+      );
+      const availabilityText = await fetchCSV(availabilityUrl, encoding);
+      const facilities = facilityTexts.map(parseCSV);
+      const availability = parseCSV(availabilityText);
+      self.postMessage({
+        id,
+        ok: true,
+        payload: { facilities, availability },
+      });
+    } catch (error) {
+      self.postMessage({
+        id,
+        ok: false,
+        error: error && error.message ? error.message : "Worker failed",
+      });
+    }
+  };
+})();
+`;
+
+function fetchAndParseInWorker(facilityUrls, availabilityUrl) {
+  if (!("Worker" in window)) {
+    return Promise.resolve(null);
+  }
+  return new Promise(resolve => {
+    let worker;
+    let workerUrl = null;
+    const createInlineWorker = () => {
+      const blob = new Blob([WORKER_SOURCE], { type: "text/javascript" });
+      workerUrl = URL.createObjectURL(blob);
+      return new Worker(workerUrl);
+    };
+    try {
+      if (window.location.protocol === "file:") {
+        worker = createInlineWorker();
+      } else {
+        try {
+          worker = new Worker("assets/js/csv-worker.js");
+        } catch (error) {
+          worker = createInlineWorker();
+        }
+      }
+    } catch (error) {
+      console.warn("Worker unavailable:", error);
+      if (workerUrl) {
+        URL.revokeObjectURL(workerUrl);
+      }
+      resolve(null);
+      return;
+    }
+
+    const messageId = `csv-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    const cleanup = () => {
+      worker.removeEventListener("message", handleMessage);
+      worker.removeEventListener("error", handleError);
+      worker.terminate();
+      if (workerUrl) {
+        URL.revokeObjectURL(workerUrl);
+      }
+    };
+    const handleMessage = event => {
+      const data = event.data;
+      if (!data || data.id !== messageId) {
+        return;
+      }
+      cleanup();
+      if (data.ok && data.payload) {
+        resolve(data.payload);
+        return;
+      }
+      console.warn("Worker parse failed:", data && data.error);
+      resolve(null);
+    };
+    const handleError = event => {
+      cleanup();
+      console.warn("Worker error:", event && event.message);
+      resolve(null);
+    };
+
+    worker.addEventListener("message", handleMessage);
+    worker.addEventListener("error", handleError);
+    worker.postMessage({
+      id: messageId,
+      facilityUrls,
+      availabilityUrl,
+      encoding: "shift-jis",
+    });
+  });
+}
+
 function setDetailsOpen(isOpen, htmlContent = "") {
   if (!detailsModal || !detailsBody) {
     return;
@@ -74,13 +235,20 @@ function setAboutOpen(isOpen) {
 }
 
 async function main() {
-  const [facilityTexts, availText] = await Promise.all([
-    Promise.all(FACILITY_CSV_URLS.map(url => fetchCSV(url))),
-    fetchCSV(AVAIL_CSV_URL),
-  ]);
-
-  const facilities = facilityTexts.map(parseCSV);
-  const av = parseCSV(availText);
+  let facilities = null;
+  let av = null;
+  const workerResult = await fetchAndParseInWorker(FACILITY_CSV_URLS, AVAIL_CSV_URL);
+  if (workerResult) {
+    facilities = workerResult.facilities;
+    av = workerResult.availability;
+  } else {
+    const [facilityTexts, availText] = await Promise.all([
+      Promise.all(FACILITY_CSV_URLS.map(url => fetchCSV(url))),
+      fetchCSV(AVAIL_CSV_URL),
+    ]);
+    facilities = facilityTexts.map(parseCSV);
+    av = parseCSV(availText);
+  }
   const avHeaders = av.headers;
   const avRows = av.rows;
 
