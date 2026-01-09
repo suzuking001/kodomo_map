@@ -1,6 +1,6 @@
 ﻿{
-  "name": "Hamamatsu Temporary Childcare Map",
-  "short_name": "Hamamatsu Map",
+  "name": "Azukari_Map",
+  "short_name": "Azukari_Map",
   "description": "Temporary childcare availability map for Hamamatsu.",
   "start_url": "./index.html",
   "scope": "./",
